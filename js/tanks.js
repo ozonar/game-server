@@ -48,7 +48,7 @@ var eurecaClientSetup = function() {
 		}
 	};
 
-	eurecaClient.exports.spawnEnemy = function(i, x, y)
+	eurecaClient.exports.spawnEnemy = function(i, x, y, state)
 	{
 	    // console.log(':2:',x,y);
         if (i === myId || ( i in tanksList)) return; // this is me
@@ -56,19 +56,22 @@ var eurecaClientSetup = function() {
 		var position = [];
         position.x = x;
 		position.y = y;
-		console.log('SPAWN '+position.x+' '+position.y);
+		// console.log('SPAWN '+position.x+' '+position.y);
 
-		tanksList[i] = new Tank(i, game, tank, position);
+		tanksList[i] = new Tank(i, game, tank, state);
 	};
 
 	eurecaClient.exports.updateState = function(id, state)
 	{
 		if (tanksList[id])  {
-			tanksList[id].cursor = state;
-			tanksList[id].tank.x = state.x;
-			tanksList[id].tank.y = state.y;
-			tanksList[id].tank.angle = state.angle;
-			tanksList[id].turret.rotation = state.rot;
+
+            tanksList[id].cursor = typeof(state.left) !== 'undefined' ? state : tanksList[id].cursor;
+            tanksList[id].tank.x = state.x ? state.x : tanksList[id].tank.x;
+            tanksList[id].tank.y = state.y ? state.y : tanksList[id].tank.y;
+            tanksList[id].tank.angle = state.angle ? state.angle : tanksList[id].tank.angle;
+            tanksList[id].turret.rotation = state.rot ? state.rot : tanksList[id].turret.rotation;
+            tanksList[id].health = state.health ? state.health : tanksList[id].health;
+
 			tanksList[id].update();
 		}
 	}
@@ -114,7 +117,7 @@ function setCursors() {
 }
 
 function setTank() {
-    player = new Tank(myId, game, tank);
+    player = new Tank(myId, game, tank, null, {'myId' : myId});
     tanksList[myId] = player;
     tank = player.tank;
     turret = player.turret;
@@ -183,15 +186,14 @@ function update () {
 			{
 
 				var targetTank = tanksList[j].tank;
-
 				game.physics.arcade.overlap(curBullets, targetTank, bulletHitPlayer, null, this);
+                // game.physics.arcade.collide(curTank, targetTank);
 
-			}
-			if (tanksList[j].alive)
-			{
-				tanksList[j].update();
 			}
 		}
+        if (tanksList[i].alive) {
+            tanksList[i].update();
+        }
     }
 }
 
@@ -199,8 +201,7 @@ function bulletHitPlayer (tank, bullet) {
 
     bullet.kill();
     if (tank.health > 0) {
-    tank.health -= 5;
-    console.log('Hit');
+    console.log('Hit',tank.parents.hit(10),tank.id);
     } else {
         // tanksList[tank.parent].kill();
         // tank.destroy();

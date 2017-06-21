@@ -1,29 +1,26 @@
-Tank = function (index, game, player, position) {
+Tank = function (index, game, player, state, params) {
+
+    this.myId = (params && params.myId) ? params.myId : -1;
     this.cursor = {
-        left:false,
-        right:false,
-        up:false,
-        fire:false
+        left: false,
+        right: false,
+        up: false,
+        fire: false
     };
 
     this.input = {
-        left:false,
-        right:false,
-        up:false,
-        fire:false
+        left: false,
+        right: false,
+        up: false,
+        fire: false
     };
 
-    var x = 0;
-    var y = 0;
+    var x = (state && state.x) ? state.x : 0;
+    var y = (state && state.y) ? state.y : 0;
 
-    if (typeof (position) !== 'undefined') {
-        x = position.x;
-        y = position.y;
-    }
-    console.log(':tank:',x,y);
+    this.health = (state && state.health) ? state.health : 100;
 
     this.game = game;
-    this.health = 30;
     this.player = player;
     this.bullets = game.add.group();
     this.bullets.enableBody = true;
@@ -35,7 +32,7 @@ Tank = function (index, game, player, position) {
     this.bullets.setAll('checkWorldBounds', true);
 
 
-    this.currentSpeed =0;
+    this.currentSpeed = 0;
     this.fireRate = 500;
     this.nextFire = 0;
     this.alive = true;
@@ -49,6 +46,7 @@ Tank = function (index, game, player, position) {
     this.turret.anchor.set(0.3, 0.5);
 
     this.tank.id = index;
+    this.tank.parents = this;
     game.physics.enable(this.tank, Phaser.Physics.ARCADE);
     this.tank.body.immovable = false;
     this.tank.body.collideWorldBounds = true;
@@ -56,12 +54,34 @@ Tank = function (index, game, player, position) {
     // this.tank.body.parent = index;
 
     this.tank.angle = 0;
+    this.hit(0); // Обновить видимость для уже поврежденных врагов
 
     game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
+    console.log('::',this.health,this.tank.alpha);
 
 };
 
-Tank.prototype.update = function() {
+Tank.prototype.hit = function (damage) {
+    console.log(':hit:', this.tank.id);
+    this.health -= damage;
+
+    if (this.health > 0) {
+        this.tank.alpha = this.health / 100;
+        this.turret.alpha = this.health / 100;
+        this.shadow.alpha = this.health / 100;
+    } else {
+        this.kill();
+    }
+
+    if (this.tank.id === myId) {
+        eurecaServer.handleKeys({'health' : this.health});
+    }
+
+
+    return this.health;
+};
+
+Tank.prototype.update = function () {
 
     var inputChanged = (
         this.cursor.left !== this.input.left ||
@@ -71,64 +91,54 @@ Tank.prototype.update = function() {
     );
 
 
-    if (inputChanged)
-    {
+    if (inputChanged) {
         //Handle input change here
         //send new values to the server
-        if (this.tank.id === myId)
-        {
+        if (this.tank.id === myId) {
             // send latest valid state to the server
             this.input.x = this.tank.x;
             this.input.y = this.tank.y;
             this.input.angle = this.tank.angle;
             this.input.rot = this.turret.rotation;
-
+            // this.input.health = this.health;
 
             eurecaServer.handleKeys(this.input);
-
         }
     }
 
     //cursor value is now updated by eurecaClient.exports.updateState method
 
 
-    if (this.cursor.left)
-    {
+    if (this.cursor.left) {
         this.tank.angle -= 4;
     }
-    else if (this.cursor.right)
-    {
+    else if (this.cursor.right) {
         this.tank.angle += 4;
     }
-    if (this.cursor.up)
-    {
+    if (this.cursor.up) {
         //  The speed we'll travel at
         this.currentSpeed = 300;
     }
-    else
-    {
-        if (this.currentSpeed > 0)
-        {
+    else {
+        if (this.currentSpeed > 0) {
             this.currentSpeed -= 4;
         }
+        // if (this.currentSpeed < 5 && this.currentSpeed > 0) {
+        //     eurecaServer.handleKeys(this.input);
+        // }
+
     }
-    if (this.cursor.fire)
-    {
-        this.fire({x:this.cursor.tx, y:this.cursor.ty});
+    if (this.cursor.fire) {
+        this.fire({x: this.cursor.tx, y: this.cursor.ty});
     }
 
 
-
-    if (this.currentSpeed > 0)
-    {
+    if (this.currentSpeed > 0) {
         game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
     }
-    else
-    {
+    else {
         game.physics.arcade.velocityFromRotation(this.tank.rotation, 0, this.tank.body.velocity);
     }
-
-
 
 
     this.shadow.x = this.tank.x;
@@ -140,10 +150,9 @@ Tank.prototype.update = function() {
 };
 
 
-Tank.prototype.fire = function(target) {
+Tank.prototype.fire = function (target) {
     if (!this.alive) return;
-    if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0)
-    {
+    if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0) {
         this.nextFire = this.game.time.now + this.fireRate;
         var bullet = this.bullets.getFirstDead();
         bullet.reset(this.turret.x, this.turret.y);
@@ -153,7 +162,7 @@ Tank.prototype.fire = function(target) {
 };
 
 
-Tank.prototype.kill = function() {
+Tank.prototype.kill = function () {
     this.alive = false;
     this.tank.kill();
     this.turret.kill();
