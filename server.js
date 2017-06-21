@@ -8,7 +8,7 @@ app.use(express.static(__dirname));
 //we'll keep clients data here
 var clients = {};
 
-console.log('Start');
+console.log('Start 2');
 
 //get EurecaServer class
 var Eureca = require('eureca.io');
@@ -42,50 +42,50 @@ eurecaServer.onConnect(function (conn) {
 eurecaServer.onDisconnect(function (conn) {
     console.log('Client disconnected ', conn.id);
 
-    var removeId = clients[conn.id].id;
+    // var removeId = clients[conn.id].id;
 
     delete clients[conn.id];
 
-    for (var c in clients)
+    for (var client in clients)
     {
-        var remote = clients[c].remote;
+        var remote = clients[client].remote;
 
         //here we call kill() method defined in the client side
         remote.kill(conn.id);
     }
 });
 
-
+// Рукопожатие при создании игры (после onConnect)
 eurecaServer.exports.handshake = function()
 {
     for (var c in clients)
     {
+        console.log('::',clients);
         var remote = clients[c].remote;
-        for (var cc in clients)
+        for (var client in clients)
         {
             //send latest known position
-            var x = clients[cc].laststate ? clients[cc].laststate.x:  0;
-            var y = clients[cc].laststate ? clients[cc].laststate.y:  0;
-
-            remote.spawnEnemy(clients[cc].id, x, y);
+            var x = clients[client].laststate ? clients[client].laststate.x:  0;
+            var y = clients[client].laststate ? clients[client].laststate.y:  0;
+            console.log('::',x,y);
+            remote.spawnEnemy(clients[client].id, x, y);
         }
     }
 };
 
 
-//be exposed to client side
+//Открывается со стороны клиента при каждом действии
 eurecaServer.exports.handleKeys = function (keys) {
     var conn = this.connection;
     var updatedClient = clients[conn.id];
 
     for (var c in clients)
     {
-        var remote = clients[c].remote;
-        remote.updateState(updatedClient.id, keys);
-
-        //keep last known state so we can send it to new connected clients
-        clients[c].laststate = keys;
+        clients[c].remote.updateState(updatedClient.id, keys);
     }
+
+    // Сохранить последнее положение танка
+    clients[conn.id].laststate = keys;
 };
 
 server.listen(8000);
