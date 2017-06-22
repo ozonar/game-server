@@ -1,5 +1,6 @@
 Tank = function (index, game, player, state, params) {
 
+    this.params = params;
     this.myId = (params && params.myId) ? params.myId : -1;
     this.cursor = {
         left: false,
@@ -31,7 +32,6 @@ Tank = function (index, game, player, state, params) {
     this.bullets.setAll('outOfBoundsKill', true);
     this.bullets.setAll('checkWorldBounds', true);
 
-
     this.currentSpeed = 0;
     this.fireRate = 500;
     this.nextFire = 0;
@@ -61,8 +61,14 @@ Tank = function (index, game, player, state, params) {
 
 };
 
-Tank.prototype.hit = function (damage) {
-    console.log(':hit:', this.tank.id);
+/**
+ * Hit this tank
+ * @param damage
+ * @param killer
+ * @returns {*}
+ */
+Tank.prototype.hit = function (damage, killer) {
+    // console.log(':hit:', this.tank.id);
     this.health -= damage;
 
     if (this.health > 0) {
@@ -71,6 +77,11 @@ Tank.prototype.hit = function (damage) {
         this.shadow.alpha = this.health / 100;
     } else {
         this.kill();
+        if (this.tank.id === myId) {
+            setFragsDeads(null, 1);
+        } else if (killer === myId) {
+            setFragsDeads(1, null);
+        }
     }
 
     if (this.tank.id === myId) {
@@ -81,6 +92,9 @@ Tank.prototype.hit = function (damage) {
     return this.health;
 };
 
+/**
+ * Update tank prop and server data
+ */
 Tank.prototype.update = function () {
 
     var inputChanged = (
@@ -132,7 +146,6 @@ Tank.prototype.update = function () {
         this.fire({x: this.cursor.tx, y: this.cursor.ty});
     }
 
-
     if (this.currentSpeed > 0) {
         game.physics.arcade.velocityFromRotation(this.tank.rotation, this.currentSpeed, this.tank.body.velocity);
     }
@@ -149,22 +162,33 @@ Tank.prototype.update = function () {
     this.turret.y = this.tank.y;
 };
 
-
+/**
+ * Fire
+ * @param target
+ */
 Tank.prototype.fire = function (target) {
     if (!this.alive) return;
     if (this.game.time.now > this.nextFire && this.bullets.countDead() > 0) {
         this.nextFire = this.game.time.now + this.fireRate;
         var bullet = this.bullets.getFirstDead();
+        bullet.index = this.tank.id;
         bullet.reset(this.turret.x, this.turret.y);
 
         bullet.rotation = this.game.physics.arcade.moveToObject(bullet, target, 500);
     }
 };
 
-
+/**
+ * Kill this tank
+ */
 Tank.prototype.kill = function () {
     this.alive = false;
     this.tank.kill();
     this.turret.kill();
     this.shadow.kill();
+    delete tanksList[this.tank.id];
+
+    if (this.tank.id === myId) {
+        resurrect();
+    }
 };

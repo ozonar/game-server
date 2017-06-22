@@ -8,7 +8,7 @@ app.use(express.static(__dirname));
 //we'll keep clients data here
 var clients = {};
 
-console.log('Start 2');
+console.log('Start 3');
 
 //get EurecaServer class
 var Eureca = require('eureca.io');
@@ -20,9 +20,9 @@ var eurecaServer = new Eureca.Server({allow: ['setId', 'spawnEnemy', 'kill', 'up
 eurecaServer.attach(server);
 
 
-//eureca.io provides events to detect clients connect/disconnect
-
-//detect client connection
+/**
+ * detect client connection
+ */
 eurecaServer.onConnect(function (conn) {
     console.log('New Client id=%s ', conn.id, conn.remoteAddress);
 
@@ -36,7 +36,9 @@ eurecaServer.onConnect(function (conn) {
     remote.setId(conn.id);
 });
 
-//detect client disconnection
+/**
+ * Detect client disconnection
+ */
 eurecaServer.onDisconnect(function (conn) {
     console.log('Client disconnected ', conn.id);
 
@@ -52,7 +54,9 @@ eurecaServer.onDisconnect(function (conn) {
     }
 });
 
-// Рукопожатие при создании игры (после onConnect)
+/**
+ * Рукопожатие при создании игры (после onConnect)
+ */
 eurecaServer.exports.handshake = function () {
     for (var c in clients) {
         // console.log('::', clients);
@@ -61,14 +65,16 @@ eurecaServer.exports.handshake = function () {
             //send latest known position
             var x = clients[client].laststate ? clients[client].laststate.x : 32;
             var y = clients[client].laststate ? clients[client].laststate.y : 32;
-            // console.log('::', x, y);
+            // console.log('::', x, y, client.id);
             remote.spawnEnemy(clients[client].id, x, y, clients[client].laststate);
         }
     }
 };
 
-
-//Открывается со стороны клиента при каждом действии
+/**
+ * Открывается со стороны клиента при каждом действии
+ * @param keys
+ */
 eurecaServer.exports.handleKeys = function (keys) {
     var conn = this.connection;
     var updatedClient = clients[conn.id];
@@ -79,12 +85,20 @@ eurecaServer.exports.handleKeys = function (keys) {
 
     var laststate = clients[conn.id].laststate ? clients[conn.id].laststate : {};
 
-    if (typeof (keys.health) !== 'undefined')
-    console.log('---', laststate.health, keys.health, conn.id);
+    // if (typeof (keys.health) !== 'undefined')
+    // console.log('---', laststate.health, keys.health, conn.id);
 
     // Сохранить последнее положение танка
-    clients[conn.id].laststate = modifyLaststate(laststate, keys);
+    if (keys.remove !== true) {
+        clients[conn.id].laststate = modifyLaststate(laststate, keys);
+    } else {
+        clients[conn.id].laststate = {};
+    }
 };
+
+
+///// SERVICE ///////
+
 
 // Сохраняет в итоговом массиве только измененные значения
 modifyLaststate = function (firstArray, addedArray) {
